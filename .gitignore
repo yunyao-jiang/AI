@@ -8,3 +8,15 @@ wheels/
 
 # Virtual environments
 .venv
+.venv*/
+
+# Local runtime files
+.tmp/
+.uv-cache/
+uploads/
+*.log
+app_stdout.log
+app_stderr.log
+
+# OS/editor noise
+*.tmp

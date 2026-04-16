@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Face Recognition v5</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f3f6fb;
+            --panel: #ffffff;
+            --text: #1c2736;
+            --muted: #617085;
+            --accent: #1463ff;
+            --border: #d9e1ee;
+            --success: #11875d;
+            --danger: #c13636;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at top right, rgba(20, 99, 255, 0.08), transparent 28%),
+                linear-gradient(180deg, #f7faff 0%, var(--bg) 100%);
+            color: var(--text);
+        }
+
+        .page {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px 20px 48px;
+        }
+
+        .hero {
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: clamp(2rem, 4vw, 3rem);
+        }
+
+        p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 24px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 20px;
+            box-shadow: 0 12px 30px rgba(13, 36, 77, 0.08);
+        }
+
+        .upload-form {
+            display: grid;
+            gap: 14px;
+        }
+
+        .field-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+            background: #f9fbff;
+        }
+
+        button {
+            border: 0;
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fff;
+            background: linear-gradient(135deg, var(--accent), #2d8cff);
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.65;
+            cursor: progress;
+        }
+
+        .status {
+            min-height: 24px;
+            font-weight: 600;
+        }
+
+        .status.success {
+            color: var(--success);
+        }
+
+        .status.error {
+            color: var(--danger);
+        }
+
+        .video-frame {
+            overflow: hidden;
+            padding: 12px;
+        }
+
+        .camera-shell {
+            position: relative;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #09101c;
+            aspect-ratio: 16 / 9;
+        }
+
+        .video-stage {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .video-frame video,
+        .video-frame canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-frame video {
+            background: #09101c;
+            pointer-events: none;
+            opacity: 1 !important;
+            visibility: visible !important;
+            z-index: 1;
+        }
+
+        .video-frame video {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+        }
+
+        .video-frame canvas {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            pointer-events: none;
+            background: transparent !important;
+        }
+
+        .camera-placeholder {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 20px;
+            text-align: center;
+            color: #d9e7ff;
+            line-height: 1.6;
+            background:
+                radial-gradient(circle at top, rgba(45, 140, 255, 0.28), transparent 35%),
+                linear-gradient(160deg, #0b1220 0%, #15243e 100%);
+            z-index: 3;
+        }
+
+        .camera-placeholder.hidden {
+            display: none;
+        }
+
+        .live-meta {
+            margin-top: 14px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .meta-pill {
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: #f4f7fd;
+            border: 1px solid var(--border);
+        }
+
+        .tips {
+            margin-top: 16px;
+            padding-left: 18px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        @media (max-width: 860px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <section class="hero">
+            <h1>Real-Time Face Recognition</h1>
+            <p style="margin: 6px 0 0; color: #1463ff; font-size: 0.95rem;">UI version: v5-canvas-overlay</p>
+            <p>Upload one reference image for the target person, then watch the live webcam feed classify faces as TARGET or OTHER in real time.</p>
+        </section>
+
+        <section class="layout">
+            <aside class="panel">
+                <form id="upload-form" class="upload-form">
+                    <label class="field-label" for="image">Target face image</label>
+                    <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp" required>
+                    <button id="submit-btn" type="submit">Upload Target</button>
+                    <div id="status" class="status" aria-live="polite"></div>
+                </form>
+
+                <ul class="tips">
+                    <li>Use a clear front-facing photo with one visible face.</li>
+                    <li>The browser now opens your camera directly for better Windows compatibility.</li>
+                    <li>Matched targets are boxed in green and printed to the server console with center coordinates.</li>
+                </ul>
+            </aside>
+
+            <section class="panel video-frame">
+                <div class="camera-shell">
+                    <div id="camera-placeholder" class="camera-placeholder">Starting browser camera...</div>
+                    <video id="camera" autoplay playsinline muted></video>
+                    <canvas id="preview-canvas" class="video-stage"></canvas>
+                </div>
+                <div class="live-meta">
+                    <div id="camera-status" class="meta-pill">Camera: starting</div>
+                    <div id="face-status" class="meta-pill">Faces: 0</div>
+                    <div id="target-center" class="meta-pill">Target center: none</div>
+                    <div id="video-debug" class="meta-pill">Video: waiting</div>
+                    <div id="render-debug" class="meta-pill">Render: waiting</div>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script>
+        const form = document.getElementById("upload-form");
+        const statusBox = document.getElementById("status");
+        const submitButton = document.getElementById("submit-btn");
+        const cameraEl = document.getElementById("camera");
+        const previewCanvas = document.getElementById("preview-canvas");
+        const previewContext = previewCanvas.getContext("2d");
+        const placeholderEl = document.getElementById("camera-placeholder");
+        const cameraStatusEl = document.getElementById("camera-status");
+        const faceStatusEl = document.getElementById("face-status");
+        const targetCenterEl = document.getElementById("target-center");
+        const videoDebugEl = document.getElementById("video-debug");
+        const renderDebugEl = document.getElementById("render-debug");
+        const captureCanvas = document.createElement("canvas");
+        let analyzing = false;
+        let streamReady = false;
+        let uploadInProgress = false;
+        let latestFaces = [];
+        let latestCenter = null;
+        let latestFrameWidth = 0;
+        let latestFrameHeight = 0;
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            statusBox.textContent = "Uploading and encoding target face...";
+            statusBox.className = "status";
+            submitButton.disabled = true;
+            uploadInProgress = true;
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch("/upload", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const contentType = response.headers.get("content-type") || "";
+                const payload = contentType.includes("application/json")
+                    ? await response.json()
+                    : { message: await response.text() || "Unexpected server response." };
+                statusBox.textContent = payload.message || "Upload finished.";
+                statusBox.className = response.ok ? "status success" : "status error";
+            } catch (error) {
+                statusBox.textContent = `Upload failed: ${error.message || "Please try again."}`;
+                statusBox.className = "status error";
+            } finally {
+                uploadInProgress = false;
+                submitButton.disabled = false;
+            }
+        });
+
+        async function startBrowserCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false
+                });
+
+                cameraEl.srcObject = stream;
+                await cameraEl.play();
+                streamReady = true;
+                cameraStatusEl.textContent = "Camera: browser stream active";
+                placeholderEl.classList.add("hidden");
+                syncPreviewSize();
+                window.addEventListener("resize", syncPreviewSize);
+                videoDebugEl.textContent = `Video: ${cameraEl.readyState}/${cameraEl.videoWidth}x${cameraEl.videoHeight}`;
+                renderDebugEl.textContent = "Render: loop started";
+                requestAnimationFrame(renderPreviewLoop);
+                loopRecognition();
+            } catch (error) {
+                cameraStatusEl.textContent = "Camera: permission denied or unavailable";
+                placeholderEl.classList.remove("hidden");
+                placeholderEl.textContent = "Browser camera could not start. Check camera permission in this browser tab and close apps that may be using the webcam.";
+                videoDebugEl.textContent = `Video error: ${error?.name || "unknown"}`;
+                renderDebugEl.textContent = "Render: no stream";
+            }
+        }
+
+        function syncPreviewSize() {
+            const rect = cameraEl.getBoundingClientRect();
+            previewCanvas.width = Math.max(1, Math.floor(rect.width));
+            previewCanvas.height = Math.max(1, Math.floor(rect.height));
+        }
+
+        function drawOverlay(frameWidth, frameHeight) {
+            if (!frameWidth || !frameHeight) {
+                return;
+            }
+            const scaleX = previewCanvas.width / frameWidth;
+            const scaleY = previewCanvas.height / frameHeight;
+
+            for (const face of latestFaces) {
+                const color = face.label === "TARGET" ? "#1ecb72" : face.label === "OTHER" ? "#ff4d4f" : "#f59e0b";
+                const left = face.left * scaleX;
+                const top = face.top * scaleY;
+                const width = (face.right - face.left) * scaleX;
+                const height = (face.bottom - face.top) * scaleY;
+
+                previewContext.strokeStyle = color;
+                previewContext.lineWidth = 3;
+                previewContext.strokeRect(left, top, width, height);
+                previewContext.fillStyle = color;
+                previewContext.fillRect(left, Math.max(0, top - 28), 112, 28);
+                previewContext.fillStyle = "#ffffff";
+                previewContext.font = "bold 16px Segoe UI";
+                previewContext.fillText(face.label, left + 8, Math.max(18, top - 9));
+            }
+        }
+
+        function renderPreviewLoop() {
+            if (streamReady && cameraEl.videoWidth > 0 && cameraEl.videoHeight > 0) {
+                syncPreviewSize();
+                previewContext.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+                previewContext.drawImage(cameraEl, 0, 0, previewCanvas.width, previewCanvas.height);
+                drawOverlay(latestFrameWidth, latestFrameHeight);
+                videoDebugEl.textContent = `Video: ${cameraEl.readyState}/${cameraEl.videoWidth}x${cameraEl.videoHeight}`;
+                renderDebugEl.textContent = `Render: ${previewCanvas.width}x${previewCanvas.height}`;
+            } else if (streamReady) {
+                videoDebugEl.textContent = `Video: ${cameraEl.readyState}/${cameraEl.videoWidth}x${cameraEl.videoHeight}`;
+                renderDebugEl.textContent = "Render: waiting for frame";
+            }
+
+            window.requestAnimationFrame(renderPreviewLoop);
+        }
+
+        async function loopRecognition() {
+            if (!streamReady) {
+                return;
+            }
+
+            if (uploadInProgress) {
+                window.setTimeout(loopRecognition, 300);
+                return;
+            }
+
+            if (!analyzing && cameraEl.videoWidth > 0 && cameraEl.videoHeight > 0) {
+                analyzing = true;
+                captureCanvas.width = 512;
+                captureCanvas.height = Math.max(288, Math.round((cameraEl.videoHeight / cameraEl.videoWidth) * 512));
+                const context = captureCanvas.getContext("2d");
+                context.drawImage(cameraEl, 0, 0, captureCanvas.width, captureCanvas.height);
+
+                try {
+                    const frameData = captureCanvas.toDataURL("image/jpeg", 0.5);
+                    const response = await fetch("/analyze-frame", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                        body: new URLSearchParams({ frame: frameData })
+                    });
+
+                    const payload = await response.json();
+                    if (response.ok && payload.success) {
+                        latestFaces = payload.faces;
+                        latestCenter = payload.target_center;
+                        latestFrameWidth = payload.frame_width;
+                        latestFrameHeight = payload.frame_height;
+                        faceStatusEl.textContent = `Faces: ${payload.faces.length}`;
+                        if (latestCenter) {
+                            targetCenterEl.textContent = `Target center: (${latestCenter.x}, ${latestCenter.y})`;
+                        } else {
+                            targetCenterEl.textContent = "Target center: none";
+                        }
+                    } else {
+                        faceStatusEl.textContent = "Faces: unavailable";
+                        if (payload.message) {
+                            cameraStatusEl.textContent = `Camera: ${payload.message}`;
+                        }
+                    }
+                } catch (error) {
+                    cameraStatusEl.textContent = "Camera: frame analysis failed";
+                } finally {
+                    analyzing = false;
+                }
+            }
+
+              window.setTimeout(loopRecognition, 450);
+        }
+
+        startBrowserCamera();
+    </script>
+</body>
+</html>
