@@ -216,20 +216,20 @@
         <section class="hero">
             <h1>Real-Time Face Recognition</h1>
             <p style="margin: 6px 0 0; color: #1463ff; font-size: 0.95rem;">UI version: v5-canvas-overlay</p>
-            <p>Upload one reference image for the target person, then watch the live webcam feed classify faces as TARGET or OTHER in real time.</p>
+            <p>Upload one or more reference images for the target person, then watch the live webcam feed classify faces as TARGET or OTHER in real time.</p>
         </section>
 
         <section class="layout">
             <aside class="panel">
                 <form id="upload-form" class="upload-form">
-                    <label class="field-label" for="image">Target face image</label>
-                    <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp" required>
+                    <label class="field-label" for="image">Target face image(s)</label>
+                    <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp" multiple required>
                     <button id="submit-btn" type="submit">Upload Target</button>
                     <div id="status" class="status" aria-live="polite"></div>
                 </form>
 
                 <ul class="tips">
-                    <li>Use a clear front-facing photo with one visible face.</li>
+                    <li>You can upload multiple clear reference photos for better matching accuracy.</li>
                     <li>The browser now opens your camera directly for better Windows compatibility.</li>
                     <li>Matched targets are boxed in green and printed to the server console with center coordinates.</li>
                 </ul>
@@ -266,6 +266,7 @@
         const videoDebugEl = document.getElementById("video-debug");
         const renderDebugEl = document.getElementById("render-debug");
         const captureCanvas = document.createElement("canvas");
+        const imageInput = document.getElementById("image");
         let analyzing = false;
         let streamReady = false;
         let uploadInProgress = false;
@@ -276,7 +277,7 @@
 
         form.addEventListener("submit", async (event) => {
             event.preventDefault();
-            statusBox.textContent = "Uploading and encoding target face...";
+            statusBox.textContent = "Uploading and encoding target face image(s)...";
             statusBox.className = "status";
             submitButton.disabled = true;
             uploadInProgress = true;
@@ -289,10 +290,7 @@
                     body: formData
                 });
 
-                const contentType = response.headers.get("content-type") || "";
-                const payload = contentType.includes("application/json")
-                    ? await response.json()
-                    : { message: await response.text() || "Unexpected server response." };
+                const payload = await parseResponsePayload(response);
                 statusBox.textContent = payload.message || "Upload finished.";
                 statusBox.className = response.ok ? "status success" : "status error";
             } catch (error) {
@@ -329,6 +327,26 @@
                 videoDebugEl.textContent = `Video error: ${error?.name || "unknown"}`;
                 renderDebugEl.textContent = "Render: no stream";
             }
+        }
+
+        async function parseResponsePayload(response) {
+            const contentType = response.headers.get("content-type") || "";
+            if (contentType.includes("application/json")) {
+                return await response.json();
+            }
+
+            const text = await response.text();
+            if (contentType.includes("text/html") || /^<!DOCTYPE html>/i.test(text.trim())) {
+                return {
+                    success: false,
+                    message: "The server returned an HTML error page. Please refresh and upload the target images again."
+                };
+            }
+
+            return {
+                success: false,
+                message: text || "Unexpected server response."
+            };
         }
 
         function syncPreviewSize() {
@@ -403,7 +421,7 @@
                         body: new URLSearchParams({ frame: frameData })
                     });
 
-                    const payload = await response.json();
+                    const payload = await parseResponsePayload(response);
                     if (response.ok && payload.success) {
                         latestFaces = payload.faces;
                         latestCenter = payload.target_center;
@@ -414,6 +432,9 @@
                             targetCenterEl.textContent = `Target center: (${latestCenter.x}, ${latestCenter.y})`;
                         } else {
                             targetCenterEl.textContent = "Target center: none";
+                        }
+                        if (!payload.target_loaded) {
+                            cameraStatusEl.textContent = "Camera: upload one or more target images to start matching";
                         }
                     } else {
                         faceStatusEl.textContent = "Faces: unavailable";

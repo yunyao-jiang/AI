@@ -55,52 +55,60 @@ def index():
 
 @app.route("/upload", methods=["POST"])
 def upload():
-    if "image" not in request.files:
-        return jsonify({"success": False, "message": "No image file was provided."}), 400
+    files = [file for file in request.files.getlist("image") if file and file.filename]
+    if not files:
+        return jsonify({"success": False, "message": "Please choose one or more images to upload."}), 400
 
-    file = request.files["image"]
-    if not file or not file.filename:
-        return jsonify({"success": False, "message": "Please choose an image to upload."}), 400
-
-    if not allowed_file(file.filename):
+    invalid_name = next((file.filename for file in files if not allowed_file(file.filename)), None)
+    if invalid_name:
         return jsonify(
-            {"success": False, "message": "Unsupported file type. Use PNG, JPG, JPEG, or WEBP."}
+            {
+                "success": False,
+                "message": f"Unsupported file type for '{invalid_name}'. Use PNG, JPG, JPEG, or WEBP.",
+            }
         ), 400
 
-    original_name = file.filename
-    suffix = Path(original_name).suffix.lower()
-    stored_name = f"{uuid4().hex}{suffix}"
-    save_path = UPLOAD_DIR / stored_name
-    try:
-        file.save(save_path)
-    except Exception as exc:
-        print(f"Failed to save upload: {exc!r}", flush=True)
-        return jsonify({"success": False, "message": "Failed to save the uploaded image."}), 500
+    previous_paths = face_store.get_image_paths()
+    saved_paths: list[Path] = []
+    encodings = []
 
     try:
-        encoding = extract_face_encoding(save_path)
+        for file in files:
+            suffix = Path(file.filename).suffix.lower()
+            save_path = UPLOAD_DIR / f"{uuid4().hex}{suffix}"
+            file.save(save_path)
+            saved_paths.append(save_path)
+            encodings.append(extract_face_encoding(save_path))
     except ValueError as exc:
-        save_path.unlink(missing_ok=True)
+        for path in saved_paths:
+            path.unlink(missing_ok=True)
         return jsonify({"success": False, "message": str(exc)}), 400
     except Exception as exc:
-        print(f"Failed to process upload: {exc!r}", flush=True)
+        print(f"Failed to process upload batch: {exc!r}", flush=True)
         traceback.print_exc()
-        save_path.unlink(missing_ok=True)
-        return jsonify({"success": False, "message": "Failed to process the uploaded image."}), 500
+        for path in saved_paths:
+            path.unlink(missing_ok=True)
+        return jsonify({"success": False, "message": "Failed to process the uploaded image set."}), 500
 
-    previous_path = face_store.get_image_path()
-    face_store.set_target(encoding, str(save_path))
+    face_store.set_targets(encodings, [str(path) for path in saved_paths])
 
-    if previous_path and previous_path != str(save_path):
-        try:
-            Path(previous_path).unlink(missing_ok=True)
-        except Exception as exc:
-            print(f"Failed to delete previous upload: {exc!r}", flush=True)
+    current_paths = {str(path) for path in saved_paths}
+    for previous_path in previous_paths:
+        if previous_path not in current_paths:
+            try:
+                Path(previous_path).unlink(missing_ok=True)
+            except Exception as exc:
+                print(f"Failed to delete previous upload: {exc!r}", flush=True)
 
+    target_count = face_store.get_target_count()
     return jsonify(
         {
             "success": True,
-            "message": "Target face loaded successfully. Real-time matching is now active.",
+            "target_count": target_count,
+            "message": (
+                f"Loaded {target_count} target image(s). Using multiple clear reference images "
+                "usually improves matching accuracy."
+            ),
         }
     )
 

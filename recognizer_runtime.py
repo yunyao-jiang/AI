@@ -67,6 +67,7 @@ class FaceRecognizer:
         face_locations = face_recognition.face_locations(rgb_small_frame, model="hog")
         metadata: dict[str, Any] = {
             "target_loaded": face_store.has_target(),
+            "target_count": face_store.get_target_count(),
             "faces": [],
             "target_center": None,
         }
@@ -76,10 +77,10 @@ class FaceRecognizer:
             return display_frame, metadata
 
         face_encodings = face_recognition.face_encodings(rgb_small_frame, known_face_locations=face_locations)
-        target_encoding = face_store.get_target()
+        target_encodings = face_store.get_targets()
 
-        if target_encoding is None:
-            self._draw_banner(display_frame, "Upload a target face to start matching", (0, 165, 255))
+        if not target_encodings:
+            self._draw_banner(display_frame, "Upload target face images to start matching", (0, 165, 255))
 
         scale_back = int(round(1 / self.resize_scale))
 
@@ -93,9 +94,9 @@ class FaceRecognizer:
             label = "OTHER"
             color = (0, 0, 255)
 
-            if target_encoding is not None:
-                matches = face_recognition.compare_faces([target_encoding], face_encoding, tolerance=self.tolerance)
-                is_match = bool(matches and matches[0])
+            if target_encodings:
+                distances = face_recognition.face_distance(target_encodings, face_encoding)
+                is_match = bool(len(distances) and float(np.min(distances)) <= self.tolerance)
             else:
                 label = "NO TARGET"
                 color = (0, 165, 255)
