@@ -220,7 +220,7 @@
         <section class="hero">
             <h1>Real-Time Face Recognition</h1>
             <p style="margin: 6px 0 0; color: #1463ff; font-size: 0.95rem;">UI version: v5-canvas-overlay</p>
-            <p>Upload one or more reference images for the target person, then watch the live webcam feed classify faces as TARGET or OTHER in real time.</p>
+            <p>Upload up to three reference images for the target person, then watch the live webcam feed classify faces as TARGET or OTHER in real time.</p>
         </section>
 
         <section class="layout">
@@ -233,7 +233,7 @@
                 </form>
 
                 <ul class="tips">
-                    <li>You can upload multiple clear reference photos for better matching accuracy.</li>
+                    <li>You can upload up to 3 clear reference photos. Multiple photos usually improve matching accuracy.</li>
                     <li>The browser now opens your camera directly for better Windows compatibility.</li>
                     <li>Matched targets are boxed in green and printed to the server console with center coordinates.</li>
                 </ul>
@@ -272,6 +272,7 @@
         const renderDebugEl = document.getElementById("render-debug");
         const captureCanvas = document.createElement("canvas");
         const imageInput = document.getElementById("image");
+        const maxTargetImages = 3;
         let analyzing = false;
         let streamReady = false;
         let uploadInProgress = false;
@@ -280,8 +281,21 @@
         let latestFrameWidth = 0;
         let latestFrameHeight = 0;
 
+        imageInput.addEventListener("change", () => {
+            if (imageInput.files.length > maxTargetImages) {
+                statusBox.textContent = `Please select at most ${maxTargetImages} target images.`;
+                statusBox.className = "status error";
+                imageInput.value = "";
+            }
+        });
+
         form.addEventListener("submit", async (event) => {
             event.preventDefault();
+            if (imageInput.files.length > maxTargetImages) {
+                statusBox.textContent = `Please select at most ${maxTargetImages} target images.`;
+                statusBox.className = "status error";
+                return;
+            }
             statusBox.textContent = "Uploading and encoding target face image(s)...";
             statusBox.className = "status";
             submitButton.disabled = true;

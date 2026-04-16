@@ -14,6 +14,7 @@ from recognizer_runtime import FaceRecognizer, extract_face_encoding
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+MAX_TARGET_IMAGES = 3
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -58,6 +59,13 @@ def upload():
     files = [file for file in request.files.getlist("image") if file and file.filename]
     if not files:
         return jsonify({"success": False, "message": "Please choose one or more images to upload."}), 400
+    if len(files) > MAX_TARGET_IMAGES:
+        return jsonify(
+            {
+                "success": False,
+                "message": f"You can upload up to {MAX_TARGET_IMAGES} target images at a time.",
+            }
+        ), 400
 
     invalid_name = next((file.filename for file in files if not allowed_file(file.filename)), None)
     if invalid_name:
@@ -107,7 +115,7 @@ def upload():
             "target_count": target_count,
             "message": (
                 f"Loaded {target_count} target image(s). Using multiple clear reference images "
-                "usually improves matching accuracy."
+                f"usually improves matching accuracy. Limit: {MAX_TARGET_IMAGES} images."
             ),
         }
     )
