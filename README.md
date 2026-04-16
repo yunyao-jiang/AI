@@ -95,3 +95,26 @@ http://127.0.0.1:5000
 - Tighten matching with distance-based thresholds
 - Add multi-frame confirmation for stronger target decisions
 - Add Docker and production deployment configuration
+
+## Deploy on Render
+
+This repository now includes:
+
+- `Dockerfile`
+- `requirements.txt`
+- `render.yaml`
+
+To deploy on Render:
+
+1. Push this repository to GitHub.
+2. Sign in to [Render](https://render.com/).
+3. Create a new Web Service from your GitHub repository.
+4. Render should detect the Docker setup automatically.
+5. Deploy the service and wait for the first build to finish.
+6. Open the generated `https://...onrender.com` URL.
+
+Notes:
+
+- Public camera access requires `HTTPS`, so using a Render URL is important.
+- Uploaded files are stored on ephemeral disk in `uploads/`, so they are not guaranteed to persist across redeploys or restarts.
+- This app is currently configured as a demo service, not a hardened production system.

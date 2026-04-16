@@ -1,0 +1,12 @@
+.git
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv*/
+.tmp/
+.uv-cache/
+uploads/
+app_run*.log
+app_stdout.log
+app_stderr.log

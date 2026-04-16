@@ -2,10 +2,10 @@ from pathlib import Path
 from uuid import uuid4
 
 import base64
+import os
 import traceback
 
 from flask import Flask, Response, jsonify, render_template, request
-from werkzeug.utils import secure_filename
 
 from face_store import face_store
 from recognizer_runtime import FaceRecognizer, extract_face_encoding
@@ -146,4 +146,5 @@ def analyze_frame():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
+    port = int(os.environ.get("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)

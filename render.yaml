@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: ai-face-recognition
+    runtime: docker
+    plan: free
+    autoDeploy: true
