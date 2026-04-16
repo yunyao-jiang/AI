@@ -208,6 +208,10 @@
             .layout {
                 grid-template-columns: 1fr;
             }
+
+            .camera-shell {
+                aspect-ratio: 3 / 4;
+            }
         }
     </style>
 </head>
@@ -257,6 +261,7 @@
         const statusBox = document.getElementById("status");
         const submitButton = document.getElementById("submit-btn");
         const cameraEl = document.getElementById("camera");
+        const cameraShellEl = document.querySelector(".camera-shell");
         const previewCanvas = document.getElementById("preview-canvas");
         const previewContext = previewCanvas.getContext("2d");
         const placeholderEl = document.getElementById("camera-placeholder");
@@ -350,6 +355,9 @@
         }
 
         function syncPreviewSize() {
+            if (cameraEl.videoWidth > 0 && cameraEl.videoHeight > 0) {
+                cameraShellEl.style.aspectRatio = `${cameraEl.videoWidth} / ${cameraEl.videoHeight}`;
+            }
             const rect = cameraEl.getBoundingClientRect();
             previewCanvas.width = Math.max(1, Math.floor(rect.width));
             previewCanvas.height = Math.max(1, Math.floor(rect.height));
