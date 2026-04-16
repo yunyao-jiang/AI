@@ -118,3 +118,4 @@ Notes:
 - Public camera access requires `HTTPS`, so using a Render URL is important.
 - Uploaded files are stored on ephemeral disk in `uploads/`, so they are not guaranteed to persist across redeploys or restarts.
 - This app is currently configured as a demo service, not a hardened production system.
+- The Docker deployment uses `dlib-bin` in `requirements.txt` to avoid high-memory source builds of `dlib` on cloud platforms.
